@@ -63,6 +63,17 @@ async function run() {
         }
       });
       
+      // update user role
+      app.put('/users/:userId', async (req, res) => {
+        const userId = req.params.userId;
+        const { role } = req.body;
+          const result = await userCollection.updateOne(
+            { _id: new ObjectId(userId) },
+            { $set: { role: role } }
+          );
+          res.send(result);
+      });
+
 
     // Sessions related API
     app.post('/sessions', async (req, res) => {
@@ -76,55 +87,71 @@ async function run() {
       const cursor = sessionCollection.find();
       const result = await cursor.toArray();
       res.send(result);
-  });
+    });
 
-  app.get('/approveSession', async (req, res) => {
+    app.get('/approveSession', async (req, res) => {
 
-        const cursor = sessionCollection.find({ status: 'approved' });
-        const result = await cursor.toArray();
-        res.send(result);
-  
-});
-
-
-app.get('/pending', async (req, res) => {
-
-  const cursor = sessionCollection.find({ status: 'pending' });
-  const result = await cursor.toArray();
-  res.send(result);
-
-});
+          const cursor = sessionCollection.find({ status: 'approved' });
+          const result = await cursor.toArray();
+          res.send(result);
+    
+    });
 
 
+    app.get('/pending', async (req, res) => {
 
-
-app.put('/approveSession/:sessionId', async (req, res) => {
-  const sessionId = req.params.sessionId;
-  const { sessionType, amount } = req.body;
-  const registrationFee = sessionType === 'paid' ? parseFloat(amount) : 0;
-  
-  try {
-      const result = await sessionCollection.updateOne(
-          { _id: new ObjectId(sessionId) },
-          { $set: { status: 'approved', registrationFee } }
-      );
+      const cursor = sessionCollection.find({ status: 'pending' });
+      const result = await cursor.toArray();
       res.send(result);
-  } catch (error) {
-      res.status(500).send({ message: 'Error approving session', error });
-  }
-});
+
+    });
+
+
+
+
+    app.put('/approveSession/:sessionId', async (req, res) => {
+      const sessionId = req.params.sessionId;
+      const { sessionType, amount } = req.body;
+      const registrationFee = sessionType === 'paid' ? parseFloat(amount) : 0;
+      
+          const result = await sessionCollection.updateOne(
+              { _id: new ObjectId(sessionId) },
+              { $set: { status: 'approved', registrationFee } }
+          );
+          res.send(result);
+      
+    });
 
 
 
   //reject a session
   app.put('/rejectSession/:sessionId', async (req, res) => {
     const sessionId = req.params.sessionId;
+    const { rejectionReason, feedback } = req.body;
+
       const result = await sessionCollection.updateOne(
         { _id: new ObjectId(sessionId) },
-        { $set: { status: 'rejected' } }
+        { $set: { status: 'rejected', rejectionReason, feedback } }
       );
       res.send(result);
   });
+
+  app.put('/updateSession/:sessionId', async (req, res) => {
+    const sessionId = req.params.sessionId;
+    const updateFields = req.body;
+      const result = await sessionCollection.updateOne(
+        { _id: new ObjectId(sessionId) },
+        { $set: updateFields }
+      );
+      res.send(result);
+  });
+
+  app.delete('/deleteSession/:sessionId', async (req, res) => {
+    const sessionId = req.params.sessionId;
+      const result = await sessionCollection.deleteOne({ _id: new ObjectId(sessionId) });
+      res.send(result);
+  });
+
 
 
     // Send a ping to confirm a successful connection
