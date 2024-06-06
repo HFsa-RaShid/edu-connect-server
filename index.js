@@ -78,6 +78,55 @@ async function run() {
       res.send(result);
   });
 
+  app.get('/approveSession', async (req, res) => {
+
+        const cursor = sessionCollection.find({ status: 'approved' });
+        const result = await cursor.toArray();
+        res.send(result);
+  
+});
+
+
+app.get('/pending', async (req, res) => {
+
+  const cursor = sessionCollection.find({ status: 'pending' });
+  const result = await cursor.toArray();
+  res.send(result);
+
+});
+
+
+
+
+app.put('/approveSession/:sessionId', async (req, res) => {
+  const sessionId = req.params.sessionId;
+  const { sessionType, amount } = req.body;
+  const registrationFee = sessionType === 'paid' ? parseFloat(amount) : 0;
+  
+  try {
+      const result = await sessionCollection.updateOne(
+          { _id: new ObjectId(sessionId) },
+          { $set: { status: 'approved', registrationFee } }
+      );
+      res.send(result);
+  } catch (error) {
+      res.status(500).send({ message: 'Error approving session', error });
+  }
+});
+
+
+
+  //reject a session
+  app.put('/rejectSession/:sessionId', async (req, res) => {
+    const sessionId = req.params.sessionId;
+      const result = await sessionCollection.updateOne(
+        { _id: new ObjectId(sessionId) },
+        { $set: { status: 'rejected' } }
+      );
+      res.send(result);
+  });
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
