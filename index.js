@@ -63,6 +63,19 @@ async function run() {
         }
       });
       
+
+    app.get('/searchUsers', async (req, res) => {
+      const searchTerm = req.query.q.toLowerCase();
+          const users = await userCollection.find({
+              role: { $ne: 'admin' },
+              $or: [
+                  { name: { $regex: searchTerm, $options: 'i' } },
+                  { email: { $regex: searchTerm, $options: 'i' } }
+              ]
+          }).toArray();
+          res.send(users);
+  });
+  
       // update user role
       app.put('/users/:userId', async (req, res) => {
         const userId = req.params.userId;
@@ -81,6 +94,21 @@ async function run() {
       const result = await sessionCollection.insertOne(session);
       res.send(result);
     });
+
+  
+
+    app.get('/sessionsByTutor/:tutorEmail', async (req, res) => {
+      const tutorEmail = req.params.tutorEmail;
+      const status = req.query.status;
+      const query = { tutorEmail: tutorEmail };
+      if (status) {
+          query.status = status;
+      }
+      const sessions = await sessionCollection.find(query).toArray();
+      res.send(sessions);
+  });
+  
+    
 
     app.get('/sessions', async (req, res) => {
        
