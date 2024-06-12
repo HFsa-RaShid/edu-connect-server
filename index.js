@@ -82,8 +82,6 @@ async function run() {
     app.put('/users/:userId', async (req, res) => {
       const userId = req.params.userId;
       const { role, image } = req.body;
-  
-      try {
           const updatedFields = {};
           if (role) {
               updatedFields.role = role;
@@ -102,13 +100,15 @@ async function run() {
           } else {
               res.status(200).json({ updated: false, message: "No changes were made" });
           }
-      } catch (error) {
-         
-          res.status(500).send("Internal Server Error");
-      }
+     
   });
-  
-    
+
+
+  // all tutor
+    app.get('/tutors', async (req, res) => {
+        const tutors = await userCollection.find({ role: 'tutor' }).toArray();
+        res.send(tutors);
+    });
 
 
     // Sessions related API
