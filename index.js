@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -51,7 +52,7 @@ async function run() {
       res.send(result);
     });
 
-   
+
     app.get('/users', async (req, res) => {
         const email = req.query.email;
         if (email) {
@@ -77,16 +78,37 @@ async function run() {
           res.send(users);
   });
   
-      // update user role
-      app.put('/users/:userId', async (req, res) => {
-        const userId = req.params.userId;
-        const { role } = req.body;
+// update role by admin or image by user
+    app.put('/users/:userId', async (req, res) => {
+      const userId = req.params.userId;
+      const { role, image } = req.body;
+  
+      try {
+          const updatedFields = {};
+          if (role) {
+              updatedFields.role = role;
+          }
+          if (image) {
+              updatedFields.image = image;
+          }
+  
           const result = await userCollection.updateOne(
-            { _id: new ObjectId(userId) },
-            { $set: { role: role } }
+              { _id: new ObjectId(userId) },
+              { $set: updatedFields }
           );
-          res.send(result);
-      });
+  
+          if (result.modifiedCount > 0) {
+              res.status(200).json({ updated: true });
+          } else {
+              res.status(200).json({ updated: false, message: "No changes were made" });
+          }
+      } catch (error) {
+         
+          res.status(500).send("Internal Server Error");
+      }
+  });
+  
+    
 
 
     // Sessions related API
@@ -118,6 +140,13 @@ async function run() {
   });
 
    // materials show
+   app.get('/materials', async (req, res) => {
+       
+    const cursor = materialsCollection.find();
+    const result = await cursor.toArray();
+    res.send(result);
+  });
+
   app.get('/materials/:email', async (req, res) => {
     const tutorEmail = req.params.email;
     const materials = await materialsCollection.find({ tutorEmail }).toArray();
