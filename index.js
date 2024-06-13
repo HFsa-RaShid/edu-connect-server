@@ -84,14 +84,12 @@ async function run() {
      
 // session booking
     app.post('/bookedSession', async (req, res) => {
-      const { studentEmail, sessionId, tutorEmail, transactionId, paymentStatus, date } = req.body;
+      const { studentEmail, sessionId, tutorEmail,date } = req.body;
 
       const newSession = {
           studentEmail,
           sessionId: new ObjectId(sessionId),
           tutorEmail,
-          transactionId,
-          paymentStatus,
           date,
       };
 
