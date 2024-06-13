@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
@@ -28,6 +29,7 @@ async function run() {
     const userCollection = client.db("eduConnectDB").collection("users");
     const sessionCollection = client.db("eduConnectDB").collection("sessions");
     const materialsCollection = client.db("eduConnectDB").collection("materials");
+    const bookedSessionsCollection = client.db("eduConnectDB").collection("bookedSessions");
 
     // Ensure the default admin user is created
     const adminEmail = process.env.ADMIN_EMAIL;
@@ -64,7 +66,60 @@ async function run() {
           res.send(users);
         }
       });
+
+      // payment
+      app.post('/create-payment-intent', async(req, res) =>{
+        const {price} = req.body;
+        const amount = Math.round(price * 100);
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: 'usd',
+          payment_method_types: ['card']
+        });
+        res.send({
+          clientSecret: paymentIntent.client_secret
+        })
+      })
+     
+// session booking
+    app.post('/bookedSession', async (req, res) => {
+      const { studentEmail, sessionId, tutorEmail, transactionId, paymentStatus, date } = req.body;
+
+      const newSession = {
+          studentEmail,
+          sessionId: new ObjectId(sessionId),
+          tutorEmail,
+          transactionId,
+          paymentStatus,
+          date,
+      };
+
+      const result = await bookedSessionsCollection.insertOne(newSession);
+      res.send(result);
+    });
+
+
+    app.get('/bookedSession', async (req, res) => {
+       
+      const cursor = bookedSessionsCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+
+    app.get('/bookedSession/:sessionId/:studentEmail', async (req, res) => {
+      const { sessionId, studentEmail } = req.params;
+          const query = {
+              sessionId: new ObjectId(sessionId), 
+              studentEmail: studentEmail
+          };
+
+          const sessions = await bookedSessionsCollection.find(query).toArray();
+          res.send(sessions);
       
+  });
+
 
     app.get('/searchUsers', async (req, res) => {
       const searchTerm = req.query.q.toLowerCase();
@@ -177,7 +232,7 @@ async function run() {
     });
 
     
-
+// for payment
     app.get('/sessions/:sessionId', async (req, res) => {
       const sessionId = req.params.sessionId;
         const session = await sessionCollection.findOne(
@@ -185,6 +240,7 @@ async function run() {
              _id: new ObjectId(sessionId) 
           }
         );
+        // console.log(session)
           res.send(session); 
     });
 
@@ -211,6 +267,12 @@ async function run() {
           const result = await cursor.toArray();
           res.send(result);
     });
+
+    app.get('/approveSession/:sessionId', async (req, res) => {
+      const sessionId = req.params.sessionId;
+
+        const session = await sessionCollection.findOne({ _id: new ObjectId(sessionId) });
+      });
 
 
     app.get('/pending', async (req, res) => {
