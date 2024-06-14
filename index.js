@@ -118,6 +118,12 @@ async function run() {
       
   });
 
+  app.get('/bookedSession/:email', async (req, res) => {
+    const studentEmail = req.params.email;
+    const result = await bookedSessionsCollection.find({ studentEmail }).toArray();
+    res.send(result);
+  });
+  
 
     app.get('/searchUsers', async (req, res) => {
       const searchTerm = req.query.q.toLowerCase();
