@@ -30,6 +30,7 @@ async function run() {
     const sessionCollection = client.db("eduConnectDB").collection("sessions");
     const materialsCollection = client.db("eduConnectDB").collection("materials");
     const bookedSessionsCollection = client.db("eduConnectDB").collection("bookedSessions");
+    const reviewsCollection = client.db("eduConnectDB").collection("reviews");
 
     // Ensure the default admin user is created
     const adminEmail = process.env.ADMIN_EMAIL;
@@ -82,6 +83,8 @@ async function run() {
         })
       })
      
+
+
 // session booking
     app.post('/bookedSession', async (req, res) => {
       const { studentEmail, sessionId, tutorEmail,date } = req.body;
@@ -122,6 +125,52 @@ async function run() {
     const studentEmail = req.params.email;
     const result = await bookedSessionsCollection.find({ studentEmail }).toArray();
     res.send(result);
+  });
+
+
+// post review
+  app.post('/reviews', async(req, res) => {
+    const { sessionId, rating, reviewText,userName, userImage, dateTime } = req.body;
+    const newReview = {
+        sessionId,
+        rating,
+        reviewText,
+        userName,
+        userImage,
+        dateTime
+    };
+    const result = await reviewsCollection.insertOne(newReview);
+      res.send(result);
+    });
+
+
+// get all reviews
+    app.get('/reviews', async (req, res) => {
+       
+      const cursor = reviewsCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // get review for each session
+
+    app.get('/reviews/:id', (req, res) => {
+      const sessionId = req.params.id;
+  
+      reviewsCollection.find({ sessionId }).toArray()
+          .then(reviews => {
+            
+              const totalRatings = reviews.reduce((sum, review) => sum + review.rating, 0);
+              const averageRating = reviews.length > 0 ? totalRatings / reviews.length : 0;
+  
+              const response = {
+                  reviews,
+                  averageRating
+              };
+  
+              res.send(response);
+          })
+         
   });
   
 
