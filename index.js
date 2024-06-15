@@ -31,6 +31,9 @@ async function run() {
     const materialsCollection = client.db("eduConnectDB").collection("materials");
     const bookedSessionsCollection = client.db("eduConnectDB").collection("bookedSessions");
     const reviewsCollection = client.db("eduConnectDB").collection("reviews");
+    const notesCollection = client.db("eduConnectDB").collection("notes");
+
+
 
     // Ensure the default admin user is created
     const adminEmail = process.env.ADMIN_EMAIL;
@@ -172,8 +175,65 @@ async function run() {
           })
          
   });
-  
 
+  // Create Note
+
+  app.post('/notes', async(req, res) => {
+    const { userEmail,title,description } = req.body;
+    const newNote = {
+      userEmail,title,description
+    };
+    const result = await notesCollection.insertOne(newNote);
+      res.send(result);
+    });
+
+    // get personal notes
+    app.get('/notes', async (req, res) => {
+      const userEmail = req.query.userEmail;
+        const query = { userEmail: userEmail };
+        const notes = await notesCollection.find(query).toArray();
+        res.send(notes);
+    });
+
+    app.get('/notes/:id', async (req, res) => {
+      const id = req.params.id;
+        const note = await notesCollection.findOne(
+          {
+             _id: new ObjectId(id) 
+          }
+        );
+          res.send(note); 
+    });
+
+    // note update
+    app.put('/notes/:id', async (req, res) => {
+      const id = req.params.id;
+      const noteData = req.body;
+
+          const updatedNote = await notesCollection.findOneAndUpdate(
+              { _id: new ObjectId(id) },
+              { $set: noteData },
+              { new: true } 
+          );
+          if (!updatedNote) {
+              return res.status(404).json({ error: 'Note not found' });
+          }
+          res.json(updatedNote);
+    
+  });
+
+  // note delete
+  app.delete('/notes/:id', async (req, res) => {
+    const { id } = req.params;
+        const deletedNote = await notesCollection.findOneAndDelete({ _id: new ObjectId(id) });
+        if (!deletedNote) {
+            return res.json({ error: 'Note not found' });
+        }
+        res.json({ success: true });
+  });
+
+
+  // get users by search
     app.get('/searchUsers', async (req, res) => {
       const searchTerm = req.query.q.toLowerCase();
           const users = await userCollection.find({
