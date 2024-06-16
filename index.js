@@ -124,11 +124,22 @@ async function run() {
       
   });
 
+  // bookedsession for each student
+
   app.get('/bookedSession/:email', async (req, res) => {
     const studentEmail = req.params.email;
+    // console.log(studentEmail)
     const result = await bookedSessionsCollection.find({ studentEmail }).toArray();
     res.send(result);
   });
+
+// materials for  student booked session
+  app.get('/materials/session/:sessionId', async (req, res) => {
+    const sessionId = req.params.sessionId;
+      const result = await materialsCollection.find({ sessionId }).toArray();
+      res.send(result);
+  });
+ 
 
 
 // post review
@@ -315,11 +326,15 @@ async function run() {
     res.send(result);
   });
 
-  app.get('/materials/:email', async (req, res) => {
+  app.get('/materials/email/:email', async (req, res) => {
     const tutorEmail = req.params.email;
     const materials = await materialsCollection.find({ tutorEmail }).toArray();
     res.send(materials);
   });
+
+
+  
+
   
   app.put('/materials/:id', async (req, res) => {
         const id = req.params.id;
@@ -327,6 +342,11 @@ async function run() {
         const result = await materialsCollection.updateOne({ _id: new ObjectId(id) }, { $set: materialData });
         res.status(200).json({ success: true, modifiedCount: result.modifiedCount });
   });
+
+
+
+
+
 
   // Delete material
   app.delete('/materials/:id', async (req, res) => {
@@ -336,6 +356,8 @@ async function run() {
             res.status(200).json({ success: true, message: 'Material deleted successfully', deletedCount: result.deletedCount });
         }
 });
+
+
 
     app.get('/sessions', async (req, res) => {
        
@@ -357,22 +379,7 @@ async function run() {
           res.send(session); 
     });
 
-    app.put('/updateSession/:sessionId', async (req, res) => {
-      const sessionId = req.params.sessionId;
-      const updateFields = req.body; 
     
-        const sessionCollection = client.db("eduConnectDB").collection("sessions");
-        const result = await sessionCollection.updateOne(
-          { _id: new ObjectId(sessionId) },
-          { $set: updateFields }
-        );
-        if (result.modifiedCount === 1) {
-          res.status(200).json({ message: "Session updated successfully" });
-        } else {
-          res.status(404).json({ message: "Session not found or no changes were made" });
-        }
-    });
-
 
 
     app.get('/approveSession', async (req, res) => {
@@ -426,6 +433,8 @@ async function run() {
       res.send(result);
   });
 
+
+  // admin update approves session
   app.put('/updateSession/:sessionId', async (req, res) => {
     const sessionId = req.params.sessionId;
     const updateFields = req.body;
@@ -436,11 +445,17 @@ async function run() {
       res.send(result);
   });
 
+// admin Delete a session
   app.delete('/deleteSession/:sessionId', async (req, res) => {
     const sessionId = req.params.sessionId;
       const result = await sessionCollection.deleteOne({ _id: new ObjectId(sessionId) });
       res.send(result);
   });
+
+
+
+
+
 
 
 
