@@ -70,7 +70,9 @@ async function run() {
           res.send(users);
         }
       });
-
+ 
+    
+   
       // payment
       app.post('/create-payment-intent', async(req, res) =>{
         const {price} = req.body;
@@ -206,6 +208,9 @@ async function run() {
         res.send(notes);
     });
 
+ 
+  
+
     app.get('/notes/:id', async (req, res) => {
       const id = req.params.id;
         const note = await notesCollection.findOne(
@@ -319,12 +324,26 @@ async function run() {
   });
 
    // materials show
-   app.get('/materials', async (req, res) => {
+  //  app.get('/materials', async (req, res) => {
        
-    const cursor = materialsCollection.find();
-    const result = await cursor.toArray();
-    res.send(result);
-  });
+  //   const cursor = materialsCollection.find();
+  //   const result = await cursor.toArray();
+  //   res.send(result);
+  // });
+
+  // materials show admin with pagination
+  app.get('/materials', async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 6;
+    const skip = (page - 1) * limit;
+
+        const materials = await materialsCollection.find().skip(skip).limit(limit).toArray();
+        const totalMaterials = await materialsCollection.countDocuments();
+        const totalPages = Math.ceil(totalMaterials / limit);
+
+        res.json({ materials, totalPages });
+});
+
 
   app.get('/materials/email/:email', async (req, res) => {
     const tutorEmail = req.params.email;
