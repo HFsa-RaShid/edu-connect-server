@@ -200,13 +200,35 @@ async function run() {
       res.send(result);
     });
 
+    
+    // app.get('/notes', async (req, res) => {
+    //   const userEmail = req.query.userEmail;
+    //     const query = { userEmail: userEmail };
+    //     const notes = await notesCollection.find(query).toArray();
+    //     res.send(notes);
+    // });
+
     // get personal notes
     app.get('/notes', async (req, res) => {
-      const userEmail = req.query.userEmail;
-        const query = { userEmail: userEmail };
-        const notes = await notesCollection.find(query).toArray();
-        res.send(notes);
-    });
+          const userEmail = req.query.userEmail;
+          const page = parseInt(req.query.page) || 1;
+          const limit = parseInt(req.query.limit) || 10;
+          
+          const query = { userEmail: userEmail };
+          const totalNotes = await notesCollection.countDocuments(query);
+          const notes = await notesCollection.find(query)
+              .skip((page - 1) * limit)
+              .limit(limit)
+              .toArray();
+          
+          res.send({
+              notes,
+              total: totalNotes,
+              page,
+              totalPages: Math.ceil(totalNotes / limit)
+          });
+      
+  });
 
  
   
