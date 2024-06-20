@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -33,7 +34,25 @@ async function run() {
     const reviewsCollection = client.db("eduConnectDB").collection("reviews");
     const notesCollection = client.db("eduConnectDB").collection("notes");
 
+    // auth related api
+    app.post('/jwt', async(req,res) =>{
+      const user = req.body;
+      // console.log('user for token', user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'});
+     
+      res.send({token})
 
+
+    })
+    // middlewares
+   
+
+    // app.post('/logout', async(req, res) =>{
+    //   const user = req.body;
+    //   // console.log('logging out', user);
+    //   res.clearCookie('token', {maxAge: 0, sameSite: 'none', secure: true});
+    //   res.send({success: true})
+    // })
 
     // Ensure the default admin user is created
     const adminEmail = process.env.ADMIN_EMAIL;
@@ -52,28 +71,85 @@ async function run() {
     } 
 
     // Users related API
-    app.post('/users', async (req, res) => {
-      const user = req.body;
-      const query = {email: user.email}
-      const existingUser = await userCollection.findOne(query);
-      if(existingUser){
-        return res.send({message: 'user already exists', insertedId: null})
+    
+    const verifyToken = (req, res, next) =>{
+      // console.log('inside verifyToken', req.headers.authorization);
+      // next();
+      if(!req.headers.authorization){
+        return res.status(401).send({message: 'unauthorized access'});
       }
-      const result = await userCollection.insertOne(user);
-      res.send(result);
-    });
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded ) =>{
+        if(err){
+          return res.status(401).send({message: 'unauthorized access'});
+        }
+        req.decoded = decoded;
+        next();
+      })
+    }
 
 
-    app.get('/users', async (req, res) => {
-        const email = req.query.email;
-        if (email) {
-          const query = { email: email };
-          const user = await userCollection.findOne(query);
-          res.send(user);
-        } else {
+    const verifyAdmin = async(req, res, next) =>{
+      const email = req.decoded.email;
+      const query = {email: email};
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if(!isAdmin){
+        return res.status(403).send({message: 'forbidden access'});
+      }
+      next();
+    }
+
+    app.get('/users',verifyToken,verifyAdmin, async (req, res) => {
+      // console.log('inside verifyToken', req.headers);
+        // const email = req.query.email;
+        // if (email) {
+        //   const query = { email: email };
+        //   const user = await userCollection.findOne(query);
+        //   res.send(user);
+        // } else {
           const users = await userCollection.find().toArray();
           res.send(users);
+        // }
+      });
+
+
+
+      app.get('/users/notAll', async (req, res) => {
+        // console.log('inside verifyToken', req.headers);
+          const email = req.query.email;
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            res.send(user);
+         
+        })
+
+      
+
+      app.get('/users/admin/:email', verifyToken, async (req, res) => {
+        const email = req.params.email; 
+        if (email !== req.decoded.email) {
+            return res.status(403).send({ message: 'forbidden access' });
         }
+        const query = { email: email };
+        const user = await userCollection.findOne(query);
+        let admin = false;
+        if (user) {
+            admin = user.role === 'admin';
+        }
+        res.send({ admin });
+    });
+    
+
+      app.post('/users', async (req, res) => {
+        const user = req.body;
+        const query = {email: user.email}
+        const existingUser = await userCollection.findOne(query);
+        if(existingUser){
+          return res.send({message: 'user already exists', insertedId: null})
+        }
+        const result = await userCollection.insertOne(user);
+        res.send(result);
       });
  
     
@@ -206,12 +282,7 @@ async function run() {
     });
 
     
-    // app.get('/notes', async (req, res) => {
-    //   const userEmail = req.query.userEmail;
-    //     const query = { userEmail: userEmail };
-    //     const notes = await notesCollection.find(query).toArray();
-    //     res.send(notes);
-    // });
+    
 
     // get personal notes
     app.get('/notes', async (req, res) => {
@@ -359,7 +430,7 @@ async function run() {
   // });
 
   // materials show admin with pagination
-  app.get('/materials', async (req, res) => {
+  app.get('/materials',verifyToken,verifyAdmin, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 6;
     const skip = (page - 1) * limit;
@@ -428,20 +499,20 @@ async function run() {
     
 
 
-    app.get('/approveSession', async (req, res) => {
+    app.get('/approveSession',verifyToken, async (req, res) => {
           const cursor = sessionCollection.find({ status: 'approved' });
           const result = await cursor.toArray();
           res.send(result);
     });
 
-    app.get('/approveSession/:sessionId', async (req, res) => {
+    app.get('/approveSession/:sessionId',verifyToken, async (req, res) => {
       const sessionId = req.params.sessionId;
 
         const session = await sessionCollection.findOne({ _id: new ObjectId(sessionId) });
       });
 
 
-    app.get('/pending', async (req, res) => {
+    app.get('/pending',verifyToken, async (req, res) => {
 
       const cursor = sessionCollection.find({ status: 'pending' });
       const result = await cursor.toArray();
@@ -452,7 +523,7 @@ async function run() {
 
 
 
-    app.put('/approveSession/:sessionId', async (req, res) => {
+    app.put('/approveSession/:sessionId',verifyToken,verifyAdmin, async (req, res) => {
       const sessionId = req.params.sessionId;
       const { sessionType, amount } = req.body;
       const registrationFee = sessionType === 'paid' ? parseFloat(amount) : 0;
@@ -468,7 +539,7 @@ async function run() {
 
 
   //reject a session
-  app.put('/rejectSession/:sessionId', async (req, res) => {
+  app.put('/rejectSession/:sessionId',verifyToken,verifyAdmin, async (req, res) => {
     const sessionId = req.params.sessionId;
     const { rejectionReason, feedback } = req.body;
 
@@ -480,8 +551,8 @@ async function run() {
   });
 
 
-  // admin update approves session
-  app.put('/updateSession/:sessionId', async (req, res) => {
+  // admin update approves session & update tutor for reapproval
+  app.put('/updateSession/:sessionId',verifyToken, async (req, res) => {
     const sessionId = req.params.sessionId;
     const updateFields = req.body;
       const result = await sessionCollection.updateOne(
@@ -492,15 +563,11 @@ async function run() {
   });
 
 // admin Delete a session
-  app.delete('/deleteSession/:sessionId', async (req, res) => {
+  app.delete('/deleteSession/:sessionId',verifyToken,verifyAdmin, async (req, res) => {
     const sessionId = req.params.sessionId;
       const result = await sessionCollection.deleteOne({ _id: new ObjectId(sessionId) });
       res.send(result);
   });
-
-
-
-
 
 
 
