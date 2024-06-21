@@ -44,15 +44,8 @@ async function run() {
 
 
     })
-    // middlewares
    
-
-    // app.post('/logout', async(req, res) =>{
-    //   const user = req.body;
-    //   // console.log('logging out', user);
-    //   res.clearCookie('token', {maxAge: 0, sameSite: 'none', secure: true});
-    //   res.send({success: true})
-    // })
+   
 
     // Ensure the default admin user is created
     const adminEmail = process.env.ADMIN_EMAIL;
@@ -101,16 +94,10 @@ async function run() {
     }
 
     app.get('/users',verifyToken,verifyAdmin, async (req, res) => {
-      // console.log('inside verifyToken', req.headers);
-        // const email = req.query.email;
-        // if (email) {
-        //   const query = { email: email };
-        //   const user = await userCollection.findOne(query);
-        //   res.send(user);
-        // } else {
+      
           const users = await userCollection.find().toArray();
           res.send(users);
-        // }
+        
       });
 
 
@@ -251,24 +238,26 @@ async function run() {
 
     // get review for each session
 
-    app.get('/reviews/:id', (req, res) => {
-      const sessionId = req.params.id;
-  
-      reviewsCollection.find({ sessionId }).toArray()
-          .then(reviews => {
-            
-              const totalRatings = reviews.reduce((sum, review) => sum + review.rating, 0);
-              const averageRating = reviews.length > 0 ? totalRatings / reviews.length : 0;
-  
-              const response = {
-                  reviews,
-                  averageRating
-              };
-  
-              res.send(response);
-          })
-         
-  });
+  app.get('/reviews/:id', (req, res) => {
+    const sessionId = req.params.id;
+
+    reviewsCollection.find({ sessionId }).toArray()
+        .then(reviews => {
+            const totalRatings = reviews.reduce((sum, review) => sum + review.rating, 0);
+            const averageRating = reviews.length > 0 ? (totalRatings / reviews.length).toFixed(2) : 0;
+
+            const response = {
+                reviews,
+                averageRating: parseFloat(averageRating) 
+            };
+
+            res.send(response);
+        })
+        .catch(err => {
+            res.status(500).send({ error: 'Failed to fetch reviews' });
+        });
+});
+
 
   // Create Note
 
@@ -499,20 +488,20 @@ async function run() {
     
 
 
-    app.get('/approveSession',verifyToken, async (req, res) => {
+    app.get('/approveSession', async (req, res) => {
           const cursor = sessionCollection.find({ status: 'approved' });
           const result = await cursor.toArray();
           res.send(result);
     });
 
-    app.get('/approveSession/:sessionId',verifyToken, async (req, res) => {
+    app.get('/approveSession/:sessionId', async (req, res) => {
       const sessionId = req.params.sessionId;
 
         const session = await sessionCollection.findOne({ _id: new ObjectId(sessionId) });
       });
 
 
-    app.get('/pending',verifyToken, async (req, res) => {
+    app.get('/pending', async (req, res) => {
 
       const cursor = sessionCollection.find({ status: 'pending' });
       const result = await cursor.toArray();
@@ -551,8 +540,20 @@ async function run() {
   });
 
 
-  // admin update approves session & update tutor for reapproval
-  app.put('/updateSession/:sessionId',verifyToken, async (req, res) => {
+  // update tutor for reapproval
+  app.put('/updateSession/tutor/:sessionId',verifyToken, async (req, res) => {
+    const sessionId = req.params.sessionId;
+    const updateFields = req.body;
+      const result = await sessionCollection.updateOne(
+        { _id: new ObjectId(sessionId) },
+        { $set: updateFields }
+      );
+      res.send(result);
+  });
+
+
+  // admin update approves session 
+  app.put('/updateSession/:sessionId',verifyToken,verifyAdmin, async (req, res) => {
     const sessionId = req.params.sessionId;
     const updateFields = req.body;
       const result = await sessionCollection.updateOne(
