@@ -1,14 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+// const bcrypt = require('bcrypt');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 3000;
 
 // MiddleWare
 app.use(cors());
@@ -48,20 +48,20 @@ async function run() {
    
 
     // Ensure the default admin user is created
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+    // const adminEmail = process.env.ADMIN_EMAIL;
+    // const adminPassword = process.env.ADMIN_PASSWORD;
+    // const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-    const adminUser = await userCollection.findOne({ email: adminEmail });
+    // const adminUser = await userCollection.findOne({ email: adminEmail });
 
-    if (!adminUser) {
-      const admin = {
-        email: adminEmail,
-        role: "admin",
+    // if (!adminUser) {
+    //   const admin = {
+    //     email: adminEmail,
+    //     role: "admin",
        
-      };
-      await userCollection.insertOne(admin);
-    } 
+    //   };
+    //   await userCollection.insertOne(admin);
+    // } 
 
     // Users related API
     
