@@ -463,6 +463,17 @@ async function run() {
         }
 });
 
+// get each material image
+app.get('/materials/:id', async (req, res) => {
+  const id = req.params.id;
+    const note = await materialsCollection.findOne(
+      {
+         _id: new ObjectId(id) 
+      }
+    );
+      res.send(note); 
+});
+
 
 
     app.get('/sessions', async (req, res) => {
